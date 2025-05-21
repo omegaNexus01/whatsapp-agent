@@ -1,4 +1,4 @@
-name: Build and upload Image to Chat
+name: Build and upload Image to Chat IA
 
 on:
   push:
