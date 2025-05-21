@@ -1,0 +1,71 @@
+name: Build and upload Image to Chat
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+
+      -
+        name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CONTAINERS }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CONTAINERS }}
+          aws-region: us-east-1  
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up CONTAINER_URI environment variable
+        run: echo "CONTAINER_URI=${{ steps.login-ecr.outputs.registry }}/${{ vars.AWS_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: docker-cache
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: ${{ env.CONTAINER_URI }} 
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+
+      - name: Update Environment Variable
+        run: |
+          curl -L \
+            -X PATCH \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer ${{ secrets.PAT_INFRA }}" \
+            https://api.github.com/repos/omegaNexus01/omega-infrastructure/environments/${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}/variables/CONTAINER_IMAGE_AI \
+            -d '{"name":"CONTAINER_IMAGE_AI","value":"${{  env.CONTAINER_URI }}"}'
+
+
+      - name: Dispatch event to Terraform repo 
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT_INFRA }}
+          repository: omegaNexus01/omega-infrastructure
+          event-type: update-image-${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+          client-payload: '{"container_uri": "${{ env.CONTAINER_URI }}"}'
+
