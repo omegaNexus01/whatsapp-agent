@@ -18,8 +18,11 @@ def should_summarize_conversation(
 
 def select_workflow(
     state: AICompanionState,
-) -> Literal["conversation_node", "image_node", "audio_node"]:
+) -> Literal["conversation_node", "image_node", "audio_node", "info_point_node"]:
     workflow = state["workflow"]
+
+    if workflow == "info_point":
+        return "info_point_node"
 
     if workflow == "image":
         return "image_node"

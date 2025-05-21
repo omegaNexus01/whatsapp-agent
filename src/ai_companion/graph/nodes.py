@@ -22,7 +22,7 @@ from ai_companion.settings import settings
 async def router_node(state: AICompanionState):
     chain = get_router_chain()
     response = await chain.ainvoke({"messages": state["messages"][-settings.ROUTER_MESSAGES_TO_ANALYZE :]})
-    return {"workflow": response.response_type}
+    return {"workflow": "info_point"}
 
 
 def context_injection_node(state: AICompanionState):
@@ -97,6 +97,11 @@ async def audio_node(state: AICompanionState, config: RunnableConfig):
     output_audio = await text_to_speech_module.synthesize(response)
 
     return {"messages": response, "audio_buffer": output_audio}
+
+
+async def info_point_node(state: AICompanionState, config: RunnableConfig):
+
+    return { "info_point": "U1"}
 
 
 async def summarize_conversation_node(state: AICompanionState):

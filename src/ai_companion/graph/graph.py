@@ -15,6 +15,7 @@ from ai_companion.graph.nodes import (
     memory_injection_node,
     router_node,
     summarize_conversation_node,
+    info_point_node
 )
 from ai_companion.graph.state import AICompanionState
 
@@ -31,6 +32,7 @@ def create_workflow_graph():
     graph_builder.add_node("conversation_node", conversation_node)
     graph_builder.add_node("image_node", image_node)
     graph_builder.add_node("audio_node", audio_node)
+    graph_builder.add_node("info_point_node", info_point_node)
     graph_builder.add_node("summarize_conversation_node", summarize_conversation_node)
 
     # Define the flow
@@ -51,6 +53,7 @@ def create_workflow_graph():
     graph_builder.add_conditional_edges("conversation_node", should_summarize_conversation)
     graph_builder.add_conditional_edges("image_node", should_summarize_conversation)
     graph_builder.add_conditional_edges("audio_node", should_summarize_conversation)
+    graph_builder.add_conditional_edges("info_point_node", should_summarize_conversation)
     graph_builder.add_edge("summarize_conversation_node", END)
 
     return graph_builder

@@ -78,10 +78,32 @@ async def whatsapp_handler(request: Request) -> Response:
                 output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
 
             workflow = output_state.values.get("workflow", "conversation")
+            print(f"Workflow: {workflow}")
             response_message = output_state.values["messages"][-1].content
 
             # Handle different response types based on workflow
-            if workflow == "audio":
+            if workflow == "info_point":
+                # Example: Call external API for info_point_node workflow
+                info_point_type = output_state.values.get("info_point")
+                try:
+                    print(f"Calling external API for info_point_node with projectId:")
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            f"https://cgg3hg4s-7001.uks1.devtunnels.ms/chatbot/whatsapp/{info_point_type}",
+                            json={
+                                "projectId": 232,
+                                "unitId": 99,
+                                "to": f"+{from_number}"
+                            }
+                        )
+
+                        print(response)
+                        response.raise_for_status()
+                        success = True
+                except Exception as e:
+                    logger.error(f"Error calling external API for info_point_node: {e}")
+
+            elif workflow == "audio":
                 audio_buffer = output_state.values["audio_buffer"]
                 success = await send_response(from_number, response_message, "audio", audio_buffer)
             elif workflow == "image":
