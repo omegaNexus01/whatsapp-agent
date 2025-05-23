@@ -15,6 +15,8 @@ from ai_companion.graph.nodes import (
     memory_injection_node,
     router_node,
     summarize_conversation_node,
+    search_node,
+    
 )
 from ai_companion.graph.state import AICompanionState
 
@@ -32,6 +34,8 @@ def create_workflow_graph():
     graph_builder.add_node("image_node", image_node)
     graph_builder.add_node("audio_node", audio_node)
     graph_builder.add_node("summarize_conversation_node", summarize_conversation_node)
+    graph_builder.add_node("search_node", search_node)
+   
 
     # Define the flow
     # First extract memories from user message
@@ -44,8 +48,11 @@ def create_workflow_graph():
     graph_builder.add_edge("router_node", "context_injection_node")
     graph_builder.add_edge("context_injection_node", "memory_injection_node")
 
-    # Then proceed to appropriate response node
-    graph_builder.add_conditional_edges("memory_injection_node", select_workflow)
+    # After memory injection, check if search is needed
+    graph_builder.add_edge("memory_injection_node", "search_node")
+    
+    # After search, proceed to appropriate response node based on workflow type
+    graph_builder.add_conditional_edges("search_node", select_workflow)
 
     # Check for summarization after any response
     graph_builder.add_conditional_edges("conversation_node", should_summarize_conversation)

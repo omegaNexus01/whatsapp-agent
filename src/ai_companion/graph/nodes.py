@@ -144,3 +144,131 @@ def memory_injection_node(state: AICompanionState):
     memory_context = memory_manager.format_memories_for_prompt(memories)
 
     return {"memory_context": memory_context}
+
+async def search_node(state: AICompanionState, config: RunnableConfig):
+    """
+    Evaluates if real estate API information is needed, generates appropriate query parameters 
+    and processes the results in a single step.
+    """
+    model = get_chat_model()
+    memory_context = state.get("memory_context", "")
+    recent_messages = state["messages"][-3:]
+    query = state["messages"][-1].content
+    
+    # Unified prompt to determine search need and generate parameters (in English)
+    unified_prompt = [
+        HumanMessage(content=f"""
+        Analyze this user query: "{query}"
+        
+        Recent conversation context:
+        {[m.content for m in recent_messages]}
+        
+        Information in memory:
+        {memory_context}
+        
+        Does this query require looking up real estate information? If not, respond only with: "NO_SEARCH_NEEDED".
+        
+        If YES, the query requires real estate information, generate a JSON with exactly this format:
+        ```json
+        {{
+            "nameQuery": string | null,       // Specific text to search by name (e.g., "Retiro")
+            "semanticQuery": string | null,   // Natural language query (e.g., "apartment near downtown")
+            "searchIn": string[],             // Array with at least one of: "zones", "projects", "developers", "pois" 
+            "params": {{                      // Optional parameters to filter results
+                "bedrooms": number | null,    // Number of bedrooms
+                "minPrice": number | null,    // Minimum price
+                "maxPrice": number | null,    // Maximum price
+                "propertyType": string | null // Property type (e.g., "apartment", "house")
+            }},
+            "flexibleSearch": boolean,        // Whether to allow flexible search
+            "includeExamples": boolean        // Whether to include examples in the response
+        }}
+        ```
+        
+        Only include parameters that are explicitly mentioned or implied in the user's query.
+        Respond only with "NO_SEARCH_NEEDED" or the valid, parseable JSON, without additional explanations.
+        """)
+    ]
+    
+    # Evaluate need and generate parameters
+    response = await model.ainvoke(unified_prompt)
+    
+    # If no search is needed, continue the flow
+    if "NO_SEARCH_NEEDED" in response.content:
+        return {"needs_api": False}
+    
+    try:
+        # Extract JSON from the response
+        import json
+        import re
+        
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```|({[\s\S]*?})', response.content)
+        if not json_match:
+            # No valid JSON found
+            return {"needs_api": False, "api_info": "Error: Invalid parameter format"}
+        
+        # Get the JSON content (from group 1 or 2, depending on the format)
+        json_content = json_match.group(1) if json_match.group(1) else json_match.group(2)
+        search_params = json.loads(json_content)
+        
+        # Import the API client
+        from ai_companion.modules.api import APIClient
+        
+        api_client = APIClient()
+        
+        # Query the API with the generated parameters
+        search_results = await api_client.search(search_params)
+        
+        # Process and format results for context
+        formatted_results = await format_search_results(search_results, search_params)
+        
+        # Create a message with the retrieved information
+        search_message = HumanMessage(content=formatted_results)
+        
+        return {
+            "needs_api": True, 
+            "api_info": search_results, 
+            "messages": search_message, 
+            "api_params": search_params
+        }
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in search_node: {str(e)}")
+        return {"needs_api": False, "api_info": f"Error processing search: {str(e)}"}
+    
+async def format_search_results(search_results, search_params):
+    """
+    Formats search results to present them to the user in a readable way.
+    """
+    model = get_chat_model()
+    
+    prompt = [
+        HumanMessage(content=f"""
+        I need you to convert these real estate search results into clear and concise text for the user.
+        
+        The original query was:
+        {search_params.get("nameQuery") or search_params.get("semanticQuery") or "Real estate search"}
+        
+        API Results:
+        ```json
+        {search_results}
+        ```
+        
+        Please format these results in natural language, highlighting:
+        1. Total number of results found
+        2. For each zone/region, mention number of relevant projects and units
+        3. If there are property examples, mention 2-3 notable ones with their main features
+        4. If flexible search was used, briefly explain what criteria were made flexible
+        
+        The format should be conversational friendly, avoiding unnecessary technical terms.
+        Don't mention internally that this data comes from an API.
+        Don't use markdown or special formatting, just plain text.
+        """)
+    ]
+    
+    response = await model.ainvoke(prompt)
+    return response.content
+        
+
