@@ -5,7 +5,7 @@ a text message, an image or an audio message.
 
 GENERAL RULES:
 1. Always analyse the full conversation before making a decision.
-2. Only return one of the following outputs: 'conversation', 'image' or 'audio'
+2. Only return one of the following outputs: 'conversation', 'image', 'audio' or 'info_point'.
 
 IMPORTANT RULES FOR IMAGE GENERATION:
 1. ONLY generate an image when there is an EXPLICIT request from the user for visual content
@@ -16,10 +16,14 @@ IMPORTANT RULES FOR IMAGE GENERATION:
 IMPORTANT RULES FOR AUDIO GENERATION:
 1. ONLY generate audio when there is an EXPLICIT request to hear Ava's voice
 
+IMPORTANT RULES FOR INFO POINT:
+P1: info point for project, only when id is given " give me project 232"
+
 Output MUST be one of:
 1. 'conversation' - for normal text message responses
 2. 'image' - ONLY when user explicitly requests visual content
 3. 'audio' - ONLY when user explicitly requests voice/audio
+4. 'info_point' - ONLY when user explicitly requests information about teh project 232
 """
 
 IMAGE_SCENARIO_PROMPT = """

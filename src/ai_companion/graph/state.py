@@ -23,3 +23,4 @@ class AICompanionState(MessagesState):
     apply_activity: bool
     memory_context: str
     info_point: str
+    info_point_param: dict
