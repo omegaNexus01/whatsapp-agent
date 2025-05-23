@@ -21,7 +21,7 @@ class APIClient:
         
         self.base_url = settings.API_URL
         self.api_key = settings.API_KEY
-        self.search_endpoint = "/api/search"
+        self.search_endpoint = "/ia/search"
     
     async def search(self, search_params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -62,21 +62,21 @@ class APIClient:
                 return response.json()
                 
         except httpx.RequestError as e:
-            logger.error(f"Error de conexión a la API inmobiliaria: {str(e)}")
+            logger.error(f"Error de conexión a la API : {str(e)}")
             return {
                 "success": False,
                 "message": f"Error de conexión: {str(e)}"
             }
         
         except httpx.HTTPStatusError as e:
-            logger.error(f"Error en la API inmobiliaria: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Error en la API: {e.response.status_code} - {e.response.text}")
             return {
                 "success": False,
                 "message": f"Error {e.response.status_code}: {e.response.text}"
             }
         
         except Exception as e:
-            logger.error(f"Error inesperado en la consulta a la API inmobiliaria: {str(e)}")
+            logger.error(f"Error inesperado en la consulta a la API: {str(e)}")
             return {
                 "success": False,
                 "message": f"Error inesperado: {str(e)}"
