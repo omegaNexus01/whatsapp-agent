@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     TOTAL_MESSAGES_AFTER_SUMMARY: int = 5
 
     SHORT_TERM_MEMORY_DB_PATH: str = os.path.join(os.getcwd(), "data", "memory.db")
+    DB_URI: str
 
     MAIN_BACKEND_API_USERNAME: str
     MAIN_BACKEND_API_PASSWORD: str
