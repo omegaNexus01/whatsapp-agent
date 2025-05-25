@@ -37,11 +37,19 @@ class Settings(BaseSettings):
     TOTAL_MESSAGES_AFTER_SUMMARY: int = 5
 
     SHORT_TERM_MEMORY_DB_PATH: str = os.path.join(os.getcwd(), "data", "memory.db")
-    DB_URI: str
+    POSTGRES_USER: str
+    POSTGRES_DB: str
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_HOST: str
+    POSTGRES_PASSWORD: str
 
     MAIN_BACKEND_API_USERNAME: str
     MAIN_BACKEND_API_PASSWORD: str
     REFRESH_THRESHOLD: int = 3500
+    
+    @property
+    def DB_URI(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 
 settings = Settings()
