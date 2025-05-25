@@ -57,13 +57,14 @@ def create_workflow_graph():
     # After search, proceed to appropriate response node based on workflow type
     graph_builder.add_conditional_edges("search_node", select_workflow)
 
-    graph_builder.add_conditional_edges("conversation_node", should_send_project_card)
+  
     
     # Check for summarization after any response
-    graph_builder.add_conditional_edges("continue_conversation_node", should_summarize_conversation)
+    graph_builder.add_conditional_edges("conversation_node", should_summarize_conversation)
     graph_builder.add_conditional_edges("project_card_node", should_summarize_conversation)
     graph_builder.add_conditional_edges("audio_node", should_summarize_conversation)
     graph_builder.add_edge("summarize_conversation_node", END)
+    
 
     return graph_builder
 
