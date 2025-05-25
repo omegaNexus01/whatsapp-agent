@@ -1,8 +1,11 @@
+from functools import lru_cache
 import httpx
-import json
-from enum import Enum, auto
-from typing import Dict, Any, List, Optional
+from enum import Enum
+import time
+from typing import Dict, Any
 import logging
+
+from ai_companion.modules.api.domain.dto.login import LoginDto, LoginResponseDto
 
 logger = logging.getLogger(__name__)
 
@@ -13,20 +16,89 @@ class SearchType(str, Enum):
     DEVELOPERS = "developers"
     POIS = "pois"
 
+
 class APIClient:
     """Cliente para la API de búsqueda inmobiliaria"""
-    
     def __init__(self):
         from ai_companion.settings import settings
-        
+
         self.base_url = settings.API_URL
-        self.api_key = settings.API_KEY
+        self.main_username = settings.MAIN_BACKEND_API_USERNAME
+        self.main_password = settings.MAIN_BACKEND_API_PASSWORD
+        self.refresh_threshold = settings.REFRESH_THRESHOLD
+        self.access_token = None
+        self.expiration_time = 0
         self.search_endpoint = "/ia/search"
-    
+        self.login_endpoint = "/v2/auth/login-password"
+
+    async def _login(self) -> LoginResponseDto | dict:
+        """
+        Login a la API, devuelve un token de acceso.
+        Returns:
+            LoginResponseDto: Objeto de respuesta con el token de acceso.
+        """
+        url = f"{self.base_url}{self.login_endpoint}"
+
+        loginDto: LoginDto = LoginDto(
+            preferredUsername=self.main_username,
+            password=self.main_password,
+        )
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json=loginDto.model_dump(),
+            )
+
+            response.raise_for_status()
+            return LoginResponseDto.model_validate(response.json())
+
+    async def _update_token(self) -> None:
+        """
+        Actualiza el token de acceso llamando al endpoint de login,
+        y actualiza el tiempo de expiración.
+        """
+        token_body: LoginResponseDto = await self._login()
+        if token_body:
+            self.access_token = token_body.authentication_result.access_token
+            self.expiration_time = (
+                time.time() + token_body.authentication_result.expires_in
+            )
+            logger.info(
+                "El token expirará en %d segundos",
+                token_body.authentication_result.expires_in,
+            )
+            logger.info(
+                "El token de acceso es: %s",
+                token_body.authentication_result.access_token,
+            )
+            logger.info("Token updated successfully")
+
+    async def _ensure_token(self) -> str:
+        """
+        Asegura que el token de acceso es válido y lo renueva si es necesario.
+        """
+        logger.info("El token existe? %s", self.access_token is not None)
+        logger.info("Tiempo de expiración del token: %s", self.expiration_time)
+        logger.info(
+            "Tiempo restante para la expiración: %d segundos",
+            self.expiration_time - time.time(),
+        )
+        logger.info(
+            "Umbral de renovación del token: %d segundos", self.refresh_threshold
+        )
+        if not self.access_token or (
+            self.expiration_time - time.time() <= self.refresh_threshold
+        ):
+            logger.info("El token está por expirar o no existe. Renovando...")
+            await self._update_token()
+        return self.access_token
+
     async def search(self, search_params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Realiza una búsqueda en la API inmobiliaria con los parámetros dados.
-        
+
         Args:
             search_params: Diccionario con los parámetros de búsqueda según el formato de SearchDto
                 - nameQuery: Texto para buscar entidades por nombre
@@ -35,12 +107,12 @@ class APIClient:
                 - params: Objeto con filtros (bedrooms, minPrice, maxPrice, propertyType)
                 - flexibleSearch: Si se debe permitir búsqueda flexible
                 - includeExamples: Si se deben incluir ejemplos en la respuesta
-        
         Returns:
             Diccionario con los resultados de la búsqueda
         """
+        token = await self._ensure_token()
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
         
@@ -148,3 +220,12 @@ class APIClient:
             normalized["includeExamples"] = True  # Por defecto activada para dar ejemplos
         
         return normalized
+
+
+@lru_cache(maxsize=1)
+def get_api_client() -> APIClient:
+    """
+    Devuelve una instancia del cliente de API.
+    Evita la creación de múltiples instancias.
+    """
+    return APIClient()
