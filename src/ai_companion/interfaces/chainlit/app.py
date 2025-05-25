@@ -2,7 +2,7 @@ from io import BytesIO
 
 import chainlit as cl
 from langchain_core.messages import AIMessageChunk, HumanMessage
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from ai_companion.graph import graph_builder
 from ai_companion.modules.image import ImageToText
@@ -18,8 +18,7 @@ image_to_text = ImageToText()
 @cl.on_chat_start
 async def on_chat_start():
     """Initialize the chat session"""
-    # thread_id = cl.user_session.get("id")
-    cl.user_session.set("thread_id", 1)
+    thread_id = cl.user_session.get("id")
 
 
 @cl.on_message
@@ -51,7 +50,7 @@ async def on_message(message: cl.Message):
     thread_id = cl.user_session.get("thread_id")
 
     async with cl.Step(type="run"):
-        async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+        async with AsyncPostgresSaver.from_conn_string(settings.DB_URI) as short_term_memory:
             graph = graph_builder.compile(checkpointer=short_term_memory)
             async for chunk in graph.astream(
                 {"messages": [HumanMessage(content=content)]},
@@ -109,7 +108,7 @@ async def on_audio_end(elements):
 
     thread_id = cl.user_session.get("thread_id")
 
-    async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+    async with AsyncPostgresSaver.from_conn_string(settings.DB_URI) as short_term_memory:
         graph = graph_builder.compile(checkpointer=short_term_memory)
         output_state = await graph.ainvoke(
             {"messages": [HumanMessage(content=transcription)]},

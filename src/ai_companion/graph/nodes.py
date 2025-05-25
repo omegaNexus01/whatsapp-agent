@@ -212,9 +212,9 @@ async def search_node(state: AICompanionState, config: RunnableConfig):
         search_params = json.loads(json_content)
         
         # Import the API client
-        from ai_companion.modules.api import APIClient
+        from ai_companion.modules.api import get_api_client
         
-        api_client = APIClient()
+        api_client = get_api_client()
         
         # Query the API with the generated parameters
         search_results = await api_client.search(search_params)
