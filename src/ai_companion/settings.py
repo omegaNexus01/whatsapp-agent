@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     TTI_MODEL_NAME: str = "black-forest-labs/FLUX.1-schnell-Free"
     ITT_MODEL_NAME: str = "llama-3.2-90b-vision-preview"
     API_URL: str
-    API_KEY: str
+    # API_KEY: str
 
     MEMORY_TOP_K: int = 3
     ROUTER_MESSAGES_TO_ANALYZE: int = 3
