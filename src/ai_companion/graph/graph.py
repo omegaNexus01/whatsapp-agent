@@ -32,7 +32,6 @@ def create_workflow_graph():
     graph_builder.add_node("context_injection_node", context_injection_node)
     graph_builder.add_node("memory_injection_node", memory_injection_node)
     graph_builder.add_node("conversation_node", conversation_node)
-    graph_builder.add_node("continue_conversation_node", conversation_node)  # Alias para conversation_node
     graph_builder.add_node("project_card_node", project_card_node)
     graph_builder.add_node("audio_node", audio_node)
     graph_builder.add_node("summarize_conversation_node", summarize_conversation_node)

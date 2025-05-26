@@ -28,6 +28,7 @@ def select_workflow(
         project_card_node: If a specific project has been identified
         conversation_node: For all other standard text conversations
     """
+    print(f"State in select_workflow: {state}")
     workflow = state["workflow"]
     api_info = state.get("api_info", {})
     messages = state.get("messages", [])
@@ -99,6 +100,7 @@ def select_workflow(
                 
                 try:
                     result = json.loads(json_str)
+                    print (f"Result from should_send_project_card: {result}")
                     
                     # Only send card if should_send_card is true and project_id is present
                     if (result.get("should_send_card", False) and 
@@ -110,15 +112,18 @@ def select_workflow(
                             
                             # Save project ID in state for project_card node to use
                             state["project_id"] = str(project_id)
+                            print(f"Project ID: {state["project_id"]}")
                             logger.info(f"Sending project card for project ID: {project_id}")
                             return "project_card_node"
                         except (ValueError, TypeError):
                             logger.error(f"Invalid project ID: {result['project_id']} is not a valid integer")
                             
                 except json.JSONDecodeError as e:
+                    print(f"JSON decode error: {str(e)} for string: {json_str}")
                     logger.error(f"JSON decode error: {str(e)} for string: {json_str}")
                     
         except Exception as e:
+            print(f"Error in project card detection: {str(e)}")
             logger.error(f"Error in project card detection: {str(e)}")
     
     # Default to conversation workflow
