@@ -35,7 +35,7 @@ class ScheduleContextGenerator:
 
     @classmethod
     def get_current_activity(cls) -> Optional[str]:
-        """Get Ava's current activity based on the current time and day of the week.
+        """Get Isabellai's current activity based on the current time and day of the week.
 
         Returns:
             str: Description of current activity, or None if no matching time slot is found

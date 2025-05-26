@@ -35,3 +35,29 @@ format-check:
 
 lint-check:
 	uv run ruff check $(CHECK_DIRS)
+
+
+# Crear el entorno virtual con uv
+setup-venv:
+	uv venv .venv
+	@echo "Entorno virtual creado. Actívalo manualmente con:"
+	@echo "  En Windows: .venv\\Scripts\\activate"
+	@echo "  En Linux/Mac: source .venv/bin/activate"
+
+# Instalar dependencias usando uv (después de activar el entorno virtual)
+install-deps:
+	uv pip install -e .
+	uv sync
+
+# Ejecutar la aplicación en modo desarrollo (requiere entorno virtual activado)
+run-dev:
+	@echo "Asegúrate de haber activado el entorno virtual"
+	fastapi run src/ai_companion/interfaces/whatsapp/webhook_endpoint.py --port 8000 --host 0.0.0.0 --reload
+
+# Windows: Configuración completa en un solo comando
+run-local-win:
+	uv venv .venv && \
+	.venv\Scripts\activate && \
+	uv sync && \
+	uv pip install -e . && \
+	fastapi run ai_companion/interfaces/whatsapp/webhook_endpoint.py --port 8000 --host 0.0.0.0 --reload

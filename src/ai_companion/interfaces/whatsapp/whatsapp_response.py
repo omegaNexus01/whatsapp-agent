@@ -12,6 +12,7 @@ from ai_companion.graph import graph_builder
 from ai_companion.modules.image import ImageToText
 from ai_companion.modules.speech import SpeechToText, TextToSpeech
 from ai_companion.settings import settings
+from ai_companion.modules.api import APIClient
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,52 @@ async def whatsapp_handler(request: Request) -> Response:
             from_number = message["from"]
             session_id = from_number
 
-            # Get user message and handle different message types
+            print(f"Received message from {from_number}: {message}")
+            if message.get("type") == "interactive":
+                interactive = message.get("interactive", {})
+                if interactive.get("type") == "list_reply":
+                    list_reply = interactive.get("list_reply", {})
+                    selection_id = list_reply.get("id", "")
+                    title = list_reply.get("title", "")
+                    api_client = APIClient()
+                    
+                    # ✅ DETECTAR SELECCIÓN DE UNIDAD Y EJECUTAR HERRAMIENTA DIRECTAMENTE
+                    if selection_id.startswith("U1-unitId:(") and selection_id.endswith(")"):
+                        # Extraer unit_id de "U1-unitId:(4202)" -> "4202"
+                        unit_id = selection_id.replace("U1-unitId:(", "").replace(")", "")
+                        print(f"🎯 Usuario seleccionó unidad: {title} (ID: {unit_id})")
+                        
+                        # ✅ EJECUTAR send_unit_card DIRECTAMENTE
+                        success = await api_client.send_unit_card(
+                            unit_id=unit_id,
+                            to=session_id,
+                        )
+                        
+                        if success:
+                            print(f"✅ Tarjeta de unidad {unit_id} enviada exitosamente")
+                            return Response(content="Unit card sent", status_code=200)
+                        else:
+                            print(f"❌ Error enviando tarjeta de unidad {unit_id}")
+                            return Response(content="Failed to send unit card", status_code=500)
+                    
+                    # ✅ DETECTAR SELECCIÓN DE PROYECTO
+                    elif selection_id.startswith("P1-projectId:(") and selection_id.endswith(")"):
+                        # Extraer project_id de "P1-projectId:(294)" -> "294"
+                        project_id = int(selection_id.replace("P1-projectId:(", "").replace(")", ""))
+                        print(f"🎯 Usuario seleccionó proyecto: {title} (ID: {project_id})")
+                        
+                        # ✅ EJECUTAR send_project_card DIRECTAMENTE
+                        success = await api_client.send_project_card(
+                            project_id=project_id,
+                            to=session_id,
+                        )
+                        
+                        if success:
+                            print(f"✅ Tarjeta de proyecto {project_id} enviada exitosamente")
+                            return Response(content="Project card sent", status_code=200)
+                        else:
+                            print(f"❌ Error enviando tarjeta de proyecto {project_id}")
+                            return Response(content="Failed to send project card", status_code=500)
             content = ""
             if message["type"] == "audio":
                 content = await process_audio_message(message)
