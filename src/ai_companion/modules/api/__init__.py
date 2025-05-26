@@ -22,6 +22,7 @@ class APIClient:
         self.base_url = settings.API_URL
         self.search_endpoint = "/ia/search"
         self.card_endpoint = "/chatbot/whatsapp/P1"
+        self.card_endpoint_unit = "/chatbot/whatsapp/U1"
     
     async def search(self, search_params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -34,6 +35,7 @@ class APIClient:
                 - searchIn: Lista de tipos de entidades a buscar (zones, projects, etc.)
                 - params: Objeto con filtros (bedrooms, minPrice, maxPrice, propertyType)
                 - flexibleSearch: Si se debe permitir búsqueda flexible
+                - useNameGuesser: Si se debe usar el NameGuesser para mejorar resultados
         
         Returns:
             Diccionario con los resultados de la búsqueda
@@ -43,8 +45,10 @@ class APIClient:
         }
         
         # Validar y normalizar parámetros
-        print(f"Parámetros de búsqueda: {search_params}")
+        
         normalized_params = self._normalize_search_params(search_params)
+        
+        print(f"Parámetros normalizados para búsqueda: {normalized_params}")
         
         try:
             url = f"{self.base_url}{self.search_endpoint}"
@@ -140,7 +144,12 @@ class APIClient:
         if "flexibleSearch" in params:
             normalized["flexibleSearch"] = bool(params["flexibleSearch"])
         else:
-            normalized["flexibleSearch"] = True  # Por defecto activada para mejorar resultados
+            normalized["flexibleSearch"] = True
+        
+        if "useNameGuesser" in params:
+            normalized["useNameGuesser"] = bool(params["useNameGuesser"])
+        else:
+            normalized["useNameGuesser"] = True  
         
         return normalized
     
@@ -207,3 +216,66 @@ class APIClient:
                 "success": False,
                 "message": f"Error inesperado: {str(e)}"  # Mantener consistencia con los mensajes de error
             }
+    async def send_unit_card(self, unit_id: str, to: str) -> Dict[str, Any]:
+        """
+        Envía una tarjeta de unidad por WhatsApp a un usuario.
+        
+        Args:
+            unit_id: ID de la unidad a enviar
+            to: Número de teléfono o identificador del destinatario
+            
+        Returns:
+            Diccionario con el resultado de la operación
+        """
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "unitId": unit_id,
+            "to": to
+        }
+        
+        try:
+            # Usar el endpoint de unidades que ya tienes definido
+            url = f"{self.base_url}{self.card_endpoint_unit}"
+            
+            logger.info(f"Sending unit card: URL={url}, Payload={payload}")
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url, 
+                    headers=headers,
+                    json=payload,
+                    timeout=15.0
+                )
+                
+                response.raise_for_status()
+                logger.info(f"Unit card successfully sent for unit ID {unit_id} to {to}")
+                
+                return {
+                    "success": True,
+                    "message": "Unit card sent successfully",
+                    "response": response.json() if response.content else {}
+                }
+                
+        except httpx.RequestError as e:
+            logger.error(f"Connection error when sending unit card: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error de conexión: {str(e)}"
+            }
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"API error when sending unit card: {e.response.status_code} - {e.response.text}")
+            return {
+                "success": False,
+                "message": f"Error {e.response.status_code}: {e.response.text}"
+            }
+        
+        except Exception as e:
+            logger.error(f"Unexpected error when sending unit card: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error inesperado: {str(e)}"
+            }            
