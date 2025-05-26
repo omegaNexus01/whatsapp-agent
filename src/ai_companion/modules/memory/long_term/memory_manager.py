@@ -39,7 +39,7 @@ class MemoryManager:
         prompt = MEMORY_ANALYSIS_PROMPT.format(message=message)
         return await self.llm.ainvoke(prompt)
 
-    async def extract_and_store_memories(self, message: BaseMessage) -> None:
+    async def extract_and_store_memories(self, message: BaseMessage, phone_number: str) -> None:
         """Extract important information from a message and store in vector store."""
         if message.type != "human":
             return
@@ -48,7 +48,7 @@ class MemoryManager:
         analysis = await self._analyze_memory(message.content)
         if analysis.is_important and analysis.formatted_memory:
             # Check if similar memory exists
-            similar = self.vector_store.find_similar_memory(analysis.formatted_memory)
+            similar = self.vector_store.find_similar_memory(analysis.formatted_memory, phone_number)
             if similar:
                 # Skip storage if we already have a similar memory
                 self.logger.info(f"Similar memory already exists: '{analysis.formatted_memory}'")
@@ -61,12 +61,17 @@ class MemoryManager:
                 metadata={
                     "id": str(uuid.uuid4()),
                     "timestamp": datetime.now().isoformat(),
+                    "phone_number": phone_number,
                 },
             )
 
-    def get_relevant_memories(self, context: str) -> List[str]:
+    def get_relevant_memories(self, context: str, phone_number: str) -> List[str]:
         """Retrieve relevant memories based on the current context."""
-        memories = self.vector_store.search_memories(context, k=settings.MEMORY_TOP_K)
+        memories = self.vector_store.search_memories(
+            context,
+            k=settings.MEMORY_TOP_K,
+            filter={"phone_number": phone_number},
+        )
         if memories:
             for memory in memories:
                 self.logger.debug(f"Memory: '{memory.text}' (score: {memory.score:.2f})")

@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import List, Optional
 
 from ai_companion.settings import settings
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from sentence_transformers import SentenceTransformer
@@ -73,7 +74,7 @@ class VectorStore:
             ),
         )
 
-    def find_similar_memory(self, text: str) -> Optional[Memory]:
+    def find_similar_memory(self, text: str, phone_number: str) -> Optional[Memory]:
         """Find if a similar memory already exists.
 
         Args:
@@ -82,7 +83,7 @@ class VectorStore:
         Returns:
             Optional Memory if a similar one is found
         """
-        results = self.search_memories(text, k=1)
+        results = self.search_memories(text, k=1, filter={"phone_number": phone_number})
         if results and results[0].score >= self.SIMILARITY_THRESHOLD:
             return results[0]
         return None
@@ -98,7 +99,7 @@ class VectorStore:
             self._create_collection()
 
         # Check if similar memory exists
-        similar_memory = self.find_similar_memory(text)
+        similar_memory = self.find_similar_memory(text, metadata.get("phone_number", ""))
         if similar_memory and similar_memory.id:
             metadata["id"] = similar_memory.id  # Keep same ID for update
 
@@ -117,11 +118,14 @@ class VectorStore:
             points=[point],
         )
 
-    def search_memories(self, query: str, k: int = 5) -> List[Memory]:
+    def search_memories(
+        self, query: str, k: int = 5, filter: Optional[dict] = None
+    ) -> List[Memory]:
         """Search for similar memories in the vector store.
 
         Args:
             query: Text to search for
+            filter: Optional filter to apply on search results
             k: Number of results to return
 
         Returns:
@@ -130,10 +134,19 @@ class VectorStore:
         if not self._collection_exists():
             return []
 
+        if filter:
+            filter = Filter(
+                must=[
+                    FieldCondition(key=k, match=MatchValue(value=v))
+                    for k, v in filter.items()
+                ]
+            )
+
         query_embedding = self.model.encode(query)
         results = self.client.search(
             collection_name=self.COLLECTION_NAME,
             query_vector=query_embedding.tolist(),
+            query_filter=filter,
             limit=k,
         )
 
