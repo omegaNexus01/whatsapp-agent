@@ -73,7 +73,7 @@ class VectorStore:
             self.client.create_payload_index(
                 collection_name=self.COLLECTION_NAME,
                 field_name=self.INDEX_NAME,
-                field_schema=PayloadSchemaType.TEXT,
+                field_schema=PayloadSchemaType.KEYWORD,
             )
     
     def _collection_exists(self) -> bool:
@@ -101,7 +101,7 @@ class VectorStore:
         Returns:
             Optional Memory if a similar one is found
         """
-        results = self.search_memories(text, k=1, filter={"phone_number": phone_number})
+        results = self.search_memories(text, k=1, filter={self.INDEX_NAME: phone_number})
         if results and results[0].score >= self.SIMILARITY_THRESHOLD:
             return results[0]
         return None
@@ -120,7 +120,7 @@ class VectorStore:
             self._create_index()
 
         # Check if similar memory exists
-        similar_memory = self.find_similar_memory(text, metadata.get("phone_number", ""))
+        similar_memory = self.find_similar_memory(text, metadata.get(self.INDEX_NAME, ""))
         if similar_memory and similar_memory.id:
             metadata["id"] = similar_memory.id  # Keep same ID for update
 
