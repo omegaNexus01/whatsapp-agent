@@ -128,17 +128,20 @@ async def memory_extraction_node(state: AICompanionState):
         return {}
 
     memory_manager = get_memory_manager()
-    await memory_manager.extract_and_store_memories(state["messages"][-1])
+    await memory_manager.extract_and_store_memories(
+        message=state["messages"][-1], phone_number=state["phone_number"]
+    )
     return {}
 
 
 def memory_injection_node(state: AICompanionState):
     """Retrieve and inject relevant memories into the character card."""
     memory_manager = get_memory_manager()
+    phone_number: str = state["phone_number"]
 
     # Get relevant memories based on recent conversation
     recent_context = " ".join([m.content for m in state["messages"][-3:]])
-    memories = memory_manager.get_relevant_memories(recent_context)
+    memories = memory_manager.get_relevant_memories(recent_context, phone_number)
 
     # Format memories for the character card
     memory_context = memory_manager.format_memories_for_prompt(memories)
@@ -212,9 +215,9 @@ async def search_node(state: AICompanionState, config: RunnableConfig):
         search_params = json.loads(json_content)
         
         # Import the API client
-        from ai_companion.modules.api import APIClient
+        from ai_companion.modules.api import get_api_client
         
-        api_client = APIClient()
+        api_client = get_api_client()
         
         # Query the API with the generated parameters
         search_results = await api_client.search(search_params)

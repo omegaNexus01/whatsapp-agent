@@ -6,7 +6,7 @@ from typing import Dict
 import httpx
 from fastapi import APIRouter, Request, Response
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from ai_companion.graph import graph_builder
 from ai_companion.modules.image import ImageToText
@@ -69,10 +69,10 @@ async def whatsapp_handler(request: Request) -> Response:
                 content = message["text"]["body"]
 
             # Process message through the graph agent
-            async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+            async with AsyncPostgresSaver.from_conn_string(settings.DB_URI) as short_term_memory:
                 graph = graph_builder.compile(checkpointer=short_term_memory)
                 await graph.ainvoke(
-                    {"messages": [HumanMessage(content=content)]},
+                    {"messages": [HumanMessage(content=content)], "phone_number": from_number},
                     {"configurable": {"thread_id": session_id}},
                 )
 
